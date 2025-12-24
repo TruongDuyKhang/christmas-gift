@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Christmas Magic Tree</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&family=Poppins:wght@400;600;700&display=swap"
+        rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(180deg, #0a0e27 0%, #1a1f3a 50%, #2a0e1f 100%);
+            font-family: 'Poppins', sans-serif;
+            position: relative;
+        }
+
+        /* Background Aurora Effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(ellipse at 20% 30%, rgba(0, 255, 200, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 70%, rgba(255, 100, 200, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(100, 150, 255, 0.1) 0%, transparent 60%);
+            animation: auroraMove 15s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes auroraMove {
+
+            0%,
+            100% {
+                opacity: 0.6;
+                transform: scale(1) translateY(0);
+            }
+
+            50% {
+                opacity: 0.8;
+                transform: scale(1.1) translateY(-20px);
+            }
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100vh;
+            display: block;
+            position: relative;
+        }
+
+        /* ==================== UI LAYER ==================== */
+        #ui-layer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 30px;
+            text-align: center;
+            pointer-events: none;
+            z-index: 100;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+        }
+
+        .status-container {
+            position: fixed;
+            bottom: 280px;
+            right: 30px;
+            /* Sang phải */
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 15px 35px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 0 20px rgba(255, 255, 255, 0.1);
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .badge-icon {
+            font-size: 28px;
+            filter: drop-shadow(0 0 10px currentColor);
+            animation: iconFloat 2s ease-in-out infinite;
+        }
+
+        .badge.compact {
+            padding: 12px 18px;
+            font-size: 24px;
+        }
+
+        .badge.compact #status-text {
+            display: none;
+        }
+
+        @keyframes iconFloat {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .guide-panel {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 15px;
+            font-size: 11px;
+            margin: 0 auto 15px;
+            max-width: 600px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            display: inline-block;
+            opacity: 0;
+            /* THÊM DÒNG NÀY */
+            visibility: hidden;
+            /* THÊM DÒNG NÀY */
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+            /* THÊM DÒNG NÀY */
+        }
+
+        .guide-panel.visible {
+            /* THÊM CLASS MỚI */
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .guide-item {
+            display: inline-block;
+            margin: 0 8px;
+            opacity: 0.9;
+        }
+
+        .guide-item strong {
+            color: #FFD700;
+            font-weight: 700;
+        }
+
+        #btnStart {
+            pointer-events: auto;
+            cursor: pointer;
+            position: fixed;
+            /* Thêm fixed */
+            left: 50%;
+            /* Thêm */
+            top: 50%;
+            /* Thêm */
+            transform: translate(-50%, -50%);
+            /* Thêm - căn giữa hoàn hảo */
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+            color: #fff;
+            border: none;
+            padding: 20px 60px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 18px;
+            font-family: 'Mountains of Christmas', cursive;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            box-shadow:
+                0 0 40px rgba(255, 107, 107, 0.6),
+                0 10px 30px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+            overflow: hidden;
+            z-index: 1000;
+            /* Thêm - luôn ở trên cùng */
+        }
+
+        #btnStart::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        #btnStart:hover::before {
+            width: 400px;
+            height: 400px;
+        }
+
+        #btnStart:hover {
+            transform: translate(-50%, -50%) translateY(-3px) scale(1.05);
+            /* ĐÃ SỬA */
+            box-shadow:
+                0 0 60px rgba(255, 107, 107, 0.9),
+                0 15px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        #btnStart span {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ==================== CAMERA PREVIEW ==================== */
+        #camera-preview {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transform: scaleX(-1);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        /* ==================== SNOWFLAKES ==================== */
+        .snowflake {
+            position: fixed;
+            top: -10px;
+            z-index: 9999;
+            user-select: none;
+            pointer-events: none;
+            color: white;
+            font-size: 1em;
+            animation: snowfall linear infinite;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            filter: blur(0.5px);
+        }
+
+        @keyframes snowfall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* ==================== LOADING SCREEN ==================== */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            overflow: hidden;
+        }
+
+        #loading-screen::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(circle at 30% 40%, rgba(255, 215, 0, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 70% 60%, rgba(255, 100, 100, 0.08) 0%, transparent 50%);
+            animation: bgRotate 20s linear infinite;
+        }
+
+        @keyframes bgRotate {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .gift-box-loader {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin-bottom: 50px;
+            animation: giftBounce 1.5s ease-in-out infinite;
+            z-index: 1;
+        }
+
+        @keyframes giftBounce {
+
+            0%,
+            100% {
+                transform: translateY(0) scale(1);
+            }
+
+            50% {
+                transform: translateY(-20px) scale(1.1);
+            }
+        }
+
+        .gift-box {
+            width: 80px;
+            height: 60px;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            position: absolute;
+            bottom: 0;
+            left: 10px;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(231, 76, 60, 0.5);
+        }
+
+        .gift-ribbon-v {
+            width: 15px;
+            height: 60px;
+            background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%);
+            position: absolute;
+            bottom: 0;
+            left: 42.5px;
+            box-shadow: 0 0 20px rgba(241, 196, 15, 0.6);
+        }
+
+        .gift-ribbon-h {
+            width: 80px;
+            height: 15px;
+            background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%);
+            position: absolute;
+            bottom: 22.5px;
+            left: 10px;
+            box-shadow: 0 0 20px rgba(241, 196, 15, 0.6);
+        }
+
+        .gift-lid {
+            width: 90px;
+            height: 20px;
+            background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+            position: absolute;
+            bottom: 60px;
+            left: 5px;
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 -5px 20px rgba(192, 57, 43, 0.4);
+        }
+
+        .gift-bow {
+            width: 40px;
+            height: 30px;
+            position: absolute;
+            top: -15px;
+            left: 25px;
+        }
+
+        .bow-left,
+        .bow-right {
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%);
+            border-radius: 50% 50% 0 50%;
+            position: absolute;
+            box-shadow: 0 0 15px rgba(241, 196, 15, 0.8);
+        }
+
+        .bow-left {
+            left: 0;
+            transform: rotate(-45deg);
+        }
+
+        .bow-right {
+            right: 0;
+            transform: rotate(45deg);
+        }
+
+        .bow-center {
+            width: 12px;
+            height: 12px;
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            border-radius: 50%;
+            position: absolute;
+            left: 14px;
+            top: 10px;
+            box-shadow: 0 0 20px rgba(243, 156, 18, 0.9);
+        }
+
+        .sparkle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: white;
+            border-radius: 50%;
+            animation: sparkleAnim 1s ease-in-out infinite;
+            box-shadow: 0 0 10px white;
+        }
+
+        .sparkle:nth-child(1) {
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .sparkle:nth-child(2) {
+            top: 20%;
+            right: 15%;
+            animation-delay: 0.3s;
+        }
+
+        .sparkle:nth-child(3) {
+            bottom: 20%;
+            left: 20%;
+            animation-delay: 0.6s;
+        }
+
+        .sparkle:nth-child(4) {
+            bottom: 15%;
+            right: 10%;
+            animation-delay: 0.9s;
+        }
+
+        @keyframes sparkleAnim {
+
+            0%,
+            100% {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            50% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .loading-content {
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .loading-title {
+            font-family: 'Mountains of Christmas', cursive;
+            font-size: 36px;
+            color: #fff;
+            margin-bottom: 15px;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+            letter-spacing: 3px;
+        }
+
+        .loading-subtitle {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 30px;
+            font-weight: 400;
+        }
+
+        .loading-dots {
+            display: inline-block;
+            margin-left: 5px;
+        }
+
+        .loading-dots span {
+            font-size: 24px;
+            animation: dotJump 1.4s infinite;
+            display: inline-block;
+            color: #f1c40f;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes dotJump {
+
+            0%,
+            80%,
+            100% {
+                transform: translateY(0);
+            }
+
+            40% {
+                transform: translateY(-8px);
+            }
+        }
+
+        .progress-container {
+            width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 25px auto;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #f1c40f 0%, #e67e22 50%, #f1c40f 100%);
+            background-size: 200% 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            animation: progressShine 2s linear infinite;
+            box-shadow: 0 0 20px rgba(241, 196, 15, 0.8);
+        }
+
+        @keyframes progressShine {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .load-counter {
+            font-size: 20px;
+            color: #f1c40f;
+            font-weight: 600;
+            margin-top: 15px;
+            text-shadow: 0 0 20px rgba(241, 196, 15, 0.6);
+        }
+
+        /* Top Corner Decorations */
+        .corner-decoration {
+            position: fixed;
+            font-size: 60px;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 50;
+            animation: decorRotate 10s linear infinite;
+        }
+
+        .corner-decoration.top-left {
+            top: 20px;
+            left: 20px;
+        }
+
+        .corner-decoration.top-right {
+            top: 20px;
+            right: 250px;
+        }
+
+        @keyframes decorRotate {
+
+            0%,
+            100% {
+                transform: rotate(0deg);
+            }
+
+            50% {
+                transform: rotate(15deg);
+            }
+        }
+
+        /* Overlay tối dần với hiệu ứng sao lấp lánh */
+        #transition-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #0a0e27 0%, #1a1f3a 50%, #2a0e1f 100%);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 2s ease;
+            z-index: 500;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        #transition-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Hiệu ứng sao băng khi chuyển cảnh */
+        #transition-overlay::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background-image:
+                radial-gradient(2px 2px at 20% 30%, white, transparent),
+                radial-gradient(2px 2px at 60% 70%, white, transparent),
+                radial-gradient(1px 1px at 50% 50%, white, transparent),
+                radial-gradient(1px 1px at 80% 10%, white, transparent),
+                radial-gradient(2px 2px at 90% 60%, white, transparent),
+                radial-gradient(1px 1px at 33% 80%, white, transparent);
+            background-size: 200% 200%;
+            animation: starsMove 3s linear infinite;
+            opacity: 0;
+        }
+
+        #transition-overlay.active::before {
+            opacity: 0.6;
+        }
+
+        @keyframes starsMove {
+            0% {
+                transform: translate(0, 0);
+            }
+
+            100% {
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        /* Hiệu ứng ánh sáng vàng lan toa */
+        #transition-overlay::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.4) 0%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 2s ease, height 2s ease;
+        }
+
+        #transition-overlay.active::after {
+            width: 150vw;
+            height: 150vw;
+        }
+
+        /* Animation cho nút Start khi bấm - MƯỢT HƠN */
+        #btnStart.clicked {
+            animation: btnMagicDisappear 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+        }
+
+        @keyframes btnMagicDisappear {
+            0% {
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+                opacity: 1;
+                filter: brightness(1);
+            }
+
+            30% {
+                transform: translate(-50%, -50%) scale(1.2) rotate(10deg);
+                opacity: 1;
+                filter: brightness(1.5);
+            }
+
+            60% {
+                transform: translate(-50%, -50%) scale(1.4) rotate(-5deg);
+                opacity: 0.7;
+                filter: brightness(2) blur(5px);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(0) rotate(180deg);
+                opacity: 0;
+                filter: brightness(3) blur(20px);
+            }
+        }
+
+        /* Particles vàng bay ra từ nút Start */
+        .magic-particle {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            background: radial-gradient(circle, #FFD700, #FFA500);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 999;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            animation: particleFly 2s ease-out forwards;
+        }
+
+        @keyframes particleFly {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(0);
+                opacity: 0;
+            }
+        }
+
+        /* Cây thông mọc từ dưới lên - MƯỢT HƠN */
+        #canvas-container {
+            transition: all 0.5s ease;
+        }
+
+        #canvas-container.growing {
+            animation: treeGrowSmooth 3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes treeGrowSmooth {
+            0% {
+                transform: translateY(120%) scale(0.8);
+                opacity: 0;
+                filter: blur(10px);
+            }
+
+            50% {
+                transform: translateY(60%) scale(0.9);
+                opacity: 0.5;
+                filter: blur(5px);
+            }
+
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+                filter: blur(0);
+            }
+        }
+
+        /* Hiệu ứng sáng từ dưới lên */
+        #canvas-container::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0;
+            background: linear-gradient(to top, rgba(255, 215, 0, 0.3), transparent);
+            transition: height 2s ease;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        #canvas-container.growing::before {
+            height: 50%;
+        }
+
+        /* Guide panel xuất hiện mượt hơn */
+        .guide-panel.visible {
+            animation: guideFadeIn 1s ease forwards 2.5s;
+        }
+
+        @keyframes guideFadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Status badge xuất hiện */
+        .status-container {
+            opacity: 0;
+            transition: opacity 1s ease 3s;
+        }
+
+        .status-container.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="gift-box-loader">
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="sparkle"></div>
+            <div class="gift-box"></div>
+            <div class="gift-ribbon-v"></div>
+            <div class="gift-ribbon-h"></div>
+            <div class="gift-lid">
+                <div class="gift-bow">
+                    <div class="bow-left"></div>
+                    <div class="bow-right"></div>
+                    <div class="bow-center"></div>
+                </div>
+            </div>
+        </div>
+        <div class="loading-content">
+            <div class="loading-title">🎄 CHRISTMAS MAGIC 🎄</div>
+            <div class="loading-subtitle">
+                Loading
+                <span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>
+            </div>
+            <div class="progress-container">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="load-counter" id="load-progress">0/5</div>
+        </div>
+    </div>
+
+    <!-- Corner Decorations -->
+    <div class="corner-decoration top-left">🎁</div>
+    <div class="corner-decoration top-right">⛄</div>
+
+    <!-- UI Layer -->
+    <div id="ui-layer">
+        <div class="status-container">
+            <div class="badge" id="status">
+                <span class="badge-icon">🎄</span>
+            </div>
+        </div>
+
+        <div class="guide-panel">
+            <span class="guide-item">🖐 <strong>Xòe tay:</strong> Bung quà tặng</span>
+            <span class="guide-item">👌 <strong>Pinch:</strong> Xem ảnh to</span>
+            <span class="guide-item">✊ <strong>Nắm tay:</strong> Thu lại cây</span>
+            <span class="guide-item">↔️ <strong>Nghiêng:</strong> Xoay cây</span>
+        </div>
+
+        <button id="btnStart" onclick="startSystem()">
+            <span>✨ Start ✨</span>
+        </button>
+    </div>
+
+    <!-- Transition Overlay -->
+    <div id="transition-overlay"></div>
+    <div id="magic-particles-container"></div>
+    <div id="canvas-container"></div>
+    <video class="input_video" style="display:none"></video>
+    <canvas id="camera-preview"></canvas>
+
+    <script>
+        // ==========================================
+        // 1. AUDIO & IMAGES
+        // ==========================================
+        const MUSIC_URL = "./images/audio.mp3";
+        let bgMusic = new Audio(MUSIC_URL);
+        bgMusic.loop = true;
+        bgMusic.volume = 1.0;
+
+        const photoFiles = [
+            "./images/image1.jpeg",
+            "./images/image2.jpeg",
+            "./images/image3.jpeg",
+            "./images/image4.jpeg",
+            "./images/image5.jpeg"
+        ];
+
+        const photoTextures = [];
+        let imagesLoaded = 0;
+        let allImagesReady = false;
+
+        function loadImageAsTexture(filepath, index) {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+
+            img.onload = function () {
+                const texture = new THREE.Texture(img);
+                texture.needsUpdate = true;
+                photoTextures[index] = texture;
+                imagesLoaded++;
+
+                const progressPercent = (imagesLoaded / 5) * 100;
+                document.getElementById('load-progress').textContent = `${imagesLoaded}/5`;
+                document.getElementById('progress-fill').style.width = progressPercent + '%';
+
+                if (imagesLoaded === 5) {
+                    allImagesReady = true;
+                    setTimeout(() => {
+                        const loadScreen = document.getElementById('loading-screen');
+                        loadScreen.style.opacity = '0';
+                        loadScreen.style.transition = 'opacity 1s ease';
+                        setTimeout(() => {
+                            loadScreen.style.display = 'none';
+                        }, 1000);
+                    }, 500);
+                }
+            };
+
+            img.onerror = function () {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+
+                const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+                gradient.addColorStop(0, '#e74c3c');
+                gradient.addColorStop(1, '#c0392b');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 512, 512);
+
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.font = '120px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('🎁', 256, 280);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                photoTextures[index] = texture;
+                imagesLoaded++;
+
+                const progressPercent = (imagesLoaded / 5) * 100;
+                document.getElementById('load-progress').textContent = `${imagesLoaded}/5`;
+                document.getElementById('progress-fill').style.width = progressPercent + '%';
+
+                if (imagesLoaded === 5) {
+                    allImagesReady = true;
+                    setTimeout(() => {
+                        const loadScreen = document.getElementById('loading-screen');
+                        loadScreen.style.opacity = '0';
+                        loadScreen.style.transition = 'opacity 1s ease';
+                        setTimeout(() => {
+                            loadScreen.style.display = 'none';
+                        }, 1000);
+                    }, 500);
+                }
+            };
+
+            img.src = filepath;
+        }
+
+        photoFiles.forEach((file, i) => loadImageAsTexture(file, i));
+
+        // ==========================================
+        // 2. SNOWFLAKES
+        // ==========================================
+        function createSnowflakes() {
+            const snowflakes = ['❄', '❅', '❆'];
+
+            for (let i = 0; i < 40; i++) {
+                setTimeout(() => {
+                    const snow = document.createElement('div');
+                    snow.className = 'snowflake';
+                    snow.innerHTML = snowflakes[Math.floor(Math.random() * snowflakes.length)];
+                    snow.style.left = Math.random() * 100 + '%';
+                    snow.style.fontSize = (Math.random() * 8 + 8) + 'px';
+                    snow.style.animationDuration = (Math.random() * 4 + 6) + 's';
+                    snow.style.animationDelay = Math.random() * 5 + 's';
+                    document.body.appendChild(snow);
+
+                    setTimeout(() => snow.remove(), 12000);
+                }, i * 150);
+            }
+
+            setInterval(() => {
+                const snow = document.createElement('div');
+                snow.className = 'snowflake';
+                snow.innerHTML = snowflakes[Math.floor(Math.random() * snowflakes.length)];
+                snow.style.left = Math.random() * 100 + '%';
+                snow.style.fontSize = (Math.random() * 8 + 8) + 'px';
+                snow.style.animationDuration = (Math.random() * 4 + 6) + 's';
+                document.body.appendChild(snow);
+
+                setTimeout(() => snow.remove(), 12000);
+            }, 400);
+        }
+        createSnowflakes();
+
+        // ==========================================
+        // 3. TEXTURES
+        // ==========================================
+        function createCustomTexture(type) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            const cx = 64, cy = 64;
+
+            if (type === 'gold_glow') {
+                const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, 50);
+                grd.addColorStop(0, '#FFFFFF');
+                grd.addColorStop(0.3, '#FFEB3B');
+                grd.addColorStop(0.6, '#FFC107');
+                grd.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = grd;
+                ctx.fillRect(0, 0, 128, 128);
+
+            } else if (type === 'red_light') {
+                const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, 50);
+                grd.addColorStop(0, '#FFE0E0');
+                grd.addColorStop(0.4, '#FF6B6B');
+                grd.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = grd;
+                ctx.fillRect(0, 0, 128, 128);
+
+            } else if (type === 'gift_red') {
+                // Nền hộp quà ĐỎ THẬT ĐỎ
+                ctx.fillStyle = '#a70101';
+                ctx.fillRect(15, 15, 98, 98);
+
+                // Ruy băng VÀNG THẬT VÀNG
+                ctx.fillStyle = '#fbff00';
+                ctx.fillRect(57, 15, 14, 98);  // Ruy băng dọc
+                ctx.fillRect(15, 57, 98, 14);  // Ruy băng ngang
+
+                // Highlight sáng trên ruy băng
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.fillRect(60, 15, 4, 98);
+                ctx.fillRect(15, 60, 98, 4);
+
+                // Viền ngoài
+                ctx.strokeStyle = "rgba(0,0,0,0.3)";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(15, 15, 98, 98);
+
+                // ===== NƠ XANH LÁ Ở GIỮA =====
+                const bowX = 64;  // Tâm nơ (giữa canvas 128x128)
+                const bowY = 64;
+
+                // Tai nơ bên trái
+                ctx.fillStyle = '#28a745';  // Xanh lá
+                ctx.beginPath();
+                ctx.ellipse(bowX - 12, bowY - 6, 10, 13, Math.PI / 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Tai nơ bên phải
+                ctx.beginPath();
+                ctx.ellipse(bowX + 12, bowY - 6, 10, 13, -Math.PI / 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Tâm nơ (hình tròn giữa)
+                ctx.fillStyle = '#1e7e34';  // Xanh lá đậm hơn
+                ctx.beginPath();
+                ctx.arc(bowX, bowY, 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Dải ruy băng trái xuống dưới
+                ctx.fillStyle = '#28a745';
+                ctx.beginPath();
+                ctx.moveTo(bowX - 4, bowY);
+                ctx.lineTo(bowX - 6, bowY + 18);
+                ctx.lineTo(bowX - 3, bowY + 20);
+                ctx.lineTo(bowX, bowY + 19);
+                ctx.closePath();
+                ctx.fill();
+
+                // Dải ruy băng phải xuống dưới
+                ctx.beginPath();
+                ctx.moveTo(bowX + 4, bowY);
+                ctx.lineTo(bowX + 6, bowY + 18);
+                ctx.lineTo(bowX + 3, bowY + 20);
+                ctx.lineTo(bowX, bowY + 19);
+                ctx.closePath();
+                ctx.fill();
+
+                // Viền nơ (để nổi bật hơn)
+                ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.ellipse(bowX - 12, bowY - 6, 10, 13, Math.PI / 6, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.ellipse(bowX + 12, bowY - 6, 10, 13, -Math.PI / 6, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(bowX, bowY, 6, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Highlight sáng trên nơ
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.beginPath();
+                ctx.arc(bowX - 14, bowY - 9, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(bowX + 14, bowY - 9, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const textures = {
+            gold: createCustomTexture('gold_glow'),
+            red: createCustomTexture('red_light'),
+            gift: createCustomTexture('gift_red')
+        };
+
+        // ==========================================
+        // 4. CONFIG
+        // ==========================================
+        const CONFIG = {
+            goldCount: 3000,
+            redCount: 400,
+            giftCount: 200,
+            explodeRadius: 70,
+            photoOrbitRadius: 32,
+            treeHeight: 75,
+            treeBaseRadius: 38
+        };
+
+        let scene, camera, renderer;
+        let groupGold, groupRed, groupGift;
+        let photoMeshes = [];
+        let titleMesh, starMesh;
+
+        let state = 'TREE';
+        let selectedIndex = 0;
+        let handX = 0.5;
+        let handTilt = 0;
+        let targetRotation = 0;
+
+        // ==========================================
+        // 5. INIT 3D
+        // ==========================================
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x0a0e27, 0.0018);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 110;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            groupGold = createParticleSystem('gold', CONFIG.goldCount, 2.2);
+            groupRed = createParticleSystem('red', CONFIG.redCount, 3.8);
+            groupGift = createParticleSystem('gift', CONFIG.giftCount, 3.5);
+
+            createPhotos();
+            createDecorations();
+            animate();
+        }
+
+        function createParticleSystem(type, count, size) {
+            const pPositions = [];
+            const pExplodeTargets = [];
+            const pTreeTargets = [];
+            const pColors = [];
+
+            for (let i = 0; i < count; i++) {
+                const h = Math.random() * CONFIG.treeHeight;
+                const y = h - CONFIG.treeHeight / 2;
+
+                let radiusRatio = (type === 'gold') ? Math.sqrt(Math.random()) : 0.88 + Math.random() * 0.12;
+
+                const maxR = (1 - (h / CONFIG.treeHeight)) * CONFIG.treeBaseRadius;
+                const r = maxR * radiusRatio;
+                const theta = Math.random() * Math.PI * 2;
+
+                const tx = r * Math.cos(theta);
+                const tz = r * Math.sin(theta);
+                pTreeTargets.push(tx, y, tz);
+
+                const u = Math.random();
+                const v = Math.random();
+                const phi = Math.acos(2 * v - 1);
+                const lam = 2 * Math.PI * u;
+
+                let radMult = (type === 'gift') ? 1.15 : 1.0;
+                const rad = CONFIG.explodeRadius * Math.cbrt(Math.random()) * radMult;
+
+                const ex = rad * Math.sin(phi) * Math.cos(lam);
+                const ey = rad * Math.sin(phi) * Math.sin(lam);
+                const ez = rad * Math.cos(phi);
+                pExplodeTargets.push(ex, ey, ez);
+
+                pPositions.push(tx, y, tz);
+
+                if (type === 'gold') {
+                    const hue = 0.12 + Math.random() * 0.08;
+                    pColors.push(1, 0.9 + Math.random() * 0.1, hue);
+                } else if (type === 'red') {
+                    pColors.push(1, 0.4 + Math.random() * 0.2, 0.4 + Math.random() * 0.2);
+                } else {
+                    pColors.push(0.91, 0.3, 0.24);
+                }
+            }
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pPositions, 3));
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(pColors, 3));
+            geo.userData = { tree: pTreeTargets, explode: pExplodeTargets };
+
+            const mat = new THREE.PointsMaterial({
+                size: size,
+                map: textures[type],
+                transparent: true,
+                opacity: 1.0,
+                blending: (type === 'gift') ? THREE.NormalBlending : THREE.AdditiveBlending,
+                depthWrite: false,
+                sizeAttenuation: true,
+                vertexColors: true
+            });
+
+            const points = new THREE.Points(geo, mat);
+            points.position.y = -100;  // Bắt đầu ở dưới
+            scene.add(points);
+            return points;
+        }
+
+        function createPhotos() {
+            const geo = new THREE.PlaneGeometry(9, 11);
+
+            for (let i = 0; i < 5; i++) {
+                const mat = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    side: THREE.DoubleSide
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+
+                mesh.visible = false;
+                mesh.scale.set(0, 0, 0);
+                scene.add(mesh);
+                photoMeshes.push(mesh);
+            }
+        }
+
+        function createDecorations() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1200;
+            canvas.height = 300;
+            const ctx = canvas.getContext('2d');
+
+            ctx.font = 'bold 110px "Mountains of Christmas"';
+            ctx.textAlign = 'center';
+
+            ctx.shadowColor = "#ff6b6b";
+            ctx.shadowBlur = 50;
+            ctx.fillStyle = '#fff';
+            ctx.fillText("MERRY CHRISTMAS", 600, 160);
+
+            ctx.shadowBlur = 0;
+            const gradient = ctx.createLinearGradient(0, 0, 1200, 0);
+            gradient.addColorStop(0, '#FFE66D');
+            gradient.addColorStop(0.5, '#FF6B6B');
+            gradient.addColorStop(1, '#4ECDC4');
+            ctx.fillStyle = gradient;
+            ctx.fillText("MERRY CHRISTMAS", 600, 160);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            const mat = new THREE.MeshBasicMaterial({
+                map: tex,
+                transparent: true,
+                blending: THREE.AdditiveBlending
+            });
+            titleMesh = new THREE.Mesh(new THREE.PlaneGeometry(65, 16), mat);
+            titleMesh.position.set(0, 55, 0);
+            scene.add(titleMesh);
+
+            const starCanvas = document.createElement('canvas');
+            starCanvas.width = 150;
+            starCanvas.height = 150;
+            const sCtx = starCanvas.getContext('2d');
+
+            const starGradient = sCtx.createRadialGradient(75, 75, 15, 75, 75, 65);
+            starGradient.addColorStop(0, '#FFFFFF');
+            starGradient.addColorStop(0.4, '#FFE66D');
+            starGradient.addColorStop(1, '#FFA500');
+
+            sCtx.fillStyle = starGradient;
+            sCtx.shadowColor = "#FFE66D";
+            sCtx.shadowBlur = 40;
+            sCtx.beginPath();
+            const cx = 75, cy = 75, outer = 60, inner = 25;
+            for (let i = 0; i < 5; i++) {
+                sCtx.lineTo(cx + Math.cos((18 + i * 72) / 180 * Math.PI) * outer, cy - Math.sin((18 + i * 72) / 180 * Math.PI) * outer);
+                sCtx.lineTo(cx + Math.cos((54 + i * 72) / 180 * Math.PI) * inner, cy - Math.sin((54 + i * 72) / 180 * Math.PI) * inner);
+            }
+            sCtx.closePath();
+            sCtx.fill();
+
+            const starTex = new THREE.CanvasTexture(starCanvas);
+            const starMat = new THREE.MeshBasicMaterial({
+                map: starTex,
+                transparent: true,
+                blending: THREE.AdditiveBlending
+            });
+            starMesh = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), starMat);
+            starMesh.position.set(0, CONFIG.treeHeight / 2 + 4, 0);
+            scene.add(starMesh);
+        }
+
+
+        function updateParticleGroup(group, targetState, speed, time, isBlinking) {
+            const positions = group.geometry.attributes.position.array;
+            const targetKey = (targetState === 'TREE') ? 'tree' : 'explode';
+            const targets = group.geometry.userData[targetKey];
+
+            for (let i = 0; i < positions.length; i++) {
+                positions[i] += (targets[i] - positions[i]) * speed;
+            }
+            group.geometry.attributes.position.needsUpdate = true;
+
+            group.rotation.y += (targetRotation - group.rotation.y) * 0.12;
+
+            if (targetState === 'TREE' && isBlinking) {
+                const scale = 1 + Math.sin(time * 4.5) * 0.18;
+                group.scale.set(scale, scale, scale);
+            } else {
+                group.scale.set(1, 1, 1);
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = Date.now() * 0.001;
+            const speed = 0.065;
+
+            if (groupGold.position.y < 0) {
+                groupGold.position.y += (0 - groupGold.position.y) * 0.03;
+                groupRed.position.y += (0 - groupRed.position.y) * 0.03;
+                groupGift.position.y += (0 - groupGift.position.y) * 0.03;
+            }
+            if (state === 'TREE') {
+                targetRotation += 0.003;  // Xoay chậm tự động 0.003 rad/frame
+            }
+
+            updateParticleGroup(groupGold, state, speed, time, false);
+            updateParticleGroup(groupRed, state, speed, time, true);
+            updateParticleGroup(groupGift, state, speed, time, false);
+
+            photoMeshes.forEach((mesh, i) => {
+                if (!mesh.material.map && photoTextures[i]) {
+                    mesh.material.map = photoTextures[i];
+                    mesh.material.needsUpdate = true;
+                }
+            });
+
+            if (state === 'TREE') {
+                titleMesh.visible = true;
+                starMesh.visible = true;
+
+                const titleScale = 1 + Math.sin(time * 2.5) * 0.04;
+                titleMesh.scale.set(titleScale, titleScale, titleScale);
+                titleMesh.rotation.z = Math.sin(time * 0.5) * 0.02;
+
+                starMesh.rotation.z += 0.025;
+                const starScale = 1 + Math.sin(time * 3.5) * 0.2;
+                starMesh.scale.set(starScale, starScale, starScale);
+
+                photoMeshes.forEach(m => {
+                    m.scale.lerp(new THREE.Vector3(0, 0, 0), 0.12);
+                    m.visible = false;
+                });
+
+            } else if (state === 'EXPLODE') {
+                titleMesh.visible = false;
+                starMesh.visible = false;
+
+                const baseAngle = groupGold.rotation.y;
+                const angleStep = (Math.PI * 2) / 5;
+                let bestIdx = 0;
+                let maxZ = -999;
+
+                photoMeshes.forEach((mesh, i) => {
+                    mesh.visible = true;
+                    const angle = baseAngle + i * angleStep;
+                    const x = Math.sin(angle) * CONFIG.photoOrbitRadius;
+                    const z = Math.cos(angle) * CONFIG.photoOrbitRadius;
+                    const y = Math.sin(time * 1.8 + i * 0.8) * 5;
+
+                    mesh.position.lerp(new THREE.Vector3(x, y, z), 0.12);
+                    mesh.lookAt(camera.position);
+
+                    if (z > maxZ) {
+                        maxZ = z;
+                        bestIdx = i;
+                    }
+
+                    if (z > 8) {
+                        const distScale = 0.9 + (z / CONFIG.photoOrbitRadius) * 0.9;  // Từ 1.3 → 0.9
+                        mesh.scale.lerp(new THREE.Vector3(distScale, distScale, distScale), 0.12);
+                        mesh.rotation.z = Math.sin(time * 1.2 + i) * 0.08;
+                    } else {
+                        mesh.scale.lerp(new THREE.Vector3(0.4, 0.4, 0.4), 0.12);  // Từ 0.6 → 0.4
+                    }
+                });
+                selectedIndex = bestIdx;
+
+            } else if (state === 'PHOTO') {
+                photoMeshes.forEach((mesh, i) => {
+                    if (i === selectedIndex) {
+                        mesh.position.lerp(new THREE.Vector3(0, 0, 50), 0.12);
+                        const photoScale = 3.0 + Math.sin(time * 2.5) * 0.11;  // Từ 3.8 → 3.0
+                        mesh.scale.lerp(new THREE.Vector3(photoScale, photoScale, photoScale), 0.12);
+                        mesh.lookAt(camera.position);
+                        mesh.rotation.z = Math.sin(time * 0.8) * 0.03;
+                    } else {
+                        mesh.scale.lerp(new THREE.Vector3(0, 0, 0), 0.12);
+                    }
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // ==========================================
+        // 6. START SYSTEM
+        // ==========================================
+        function startSystem() {
+            if (!allImagesReady) {
+                alert('⏳ Vui lòng đợi ảnh tải xong!');
+                return;
+            }
+
+            const btnStart = document.getElementById('btnStart');
+            const overlay = document.getElementById('transition-overlay');
+            const guidePanel = document.querySelector('.guide-panel');
+            const statusContainer = document.querySelector('.status-container');
+            const canvasContainer = document.getElementById('canvas-container');
+            const particlesContainer = document.getElementById('magic-particles-container');
+
+            // Bước 1: Tạo particles bay ra từ nút Start
+            const btnRect = btnStart.getBoundingClientRect();
+            const btnCenterX = btnRect.left + btnRect.width / 2;
+            const btnCenterY = btnRect.top + btnRect.height / 2;
+
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'magic-particle';
+                    particle.style.left = btnCenterX + 'px';
+                    particle.style.top = btnCenterY + 'px';
+
+                    const angle = (Math.PI * 2 * i) / 50;
+                    const distance = 300 + Math.random() * 400;
+                    const tx = Math.cos(angle) * distance;
+                    const ty = Math.sin(angle) * distance;
+
+                    particle.style.setProperty('--tx', tx + 'px');
+                    particle.style.setProperty('--ty', ty + 'px');
+                    particle.style.animationDelay = (i * 0.02) + 's';
+
+                    particlesContainer.appendChild(particle);
+
+                    setTimeout(() => particle.remove(), 2000);
+                }, i * 15);
+            }
+
+            // Bước 2: Nút Start biến mất với hiệu ứng
+            btnStart.classList.add('clicked');
+
+            // Bước 3: Overlay tối dần (sau 0.5s)
+            setTimeout(() => {
+                overlay.classList.add('active');
+            }, 500);
+
+            // Bước 4: Khởi động 3D và cây mọc lên (sau 1.5s)
+            setTimeout(() => {
+                btnStart.style.display = 'none';
+                bgMusic.play().catch(e => console.log('Audio:', e));
+                init3D();
+
+                // Cây thông mọc từ dưới lên
+                canvasContainer.classList.add('growing');
+
+            }, 1500);
+
+            // Bước 5: Hiện guide panel và status (sau 3.5s)
+            setTimeout(() => {
+                guidePanel.classList.add('visible');
+                statusContainer.classList.add('visible');
+
+                // Tắt overlay
+                setTimeout(() => {
+                    overlay.classList.remove('active');
+                }, 500);
+
+            }, 3500);
+
+            // Bước 6: Khởi động camera (sau 2s)
+            setTimeout(() => {
+                const video = document.getElementsByClassName('input_video')[0];
+                const canvas = document.getElementById('camera-preview');
+                const ctx = canvas.getContext('2d');
+                const statusDiv = document.getElementById('status');
+
+                canvas.width = 200;
+                canvas.height = 150;
+
+                let frameCnt = 0;
+                const hands = new Hands({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+                });
+                hands.setOptions({
+                    maxNumHands: 1,
+                    modelComplexity: 0,
+                    minDetectionConfidence: 0.5,
+                    minTrackingConfidence: 0.5
+                });
+
+                hands.onResults(results => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+                    if (results.multiHandLandmarks.length > 0) {
+                        const lm = results.multiHandLandmarks[0];
+                        handX = lm[9].x;
+
+                        const wrist = lm[0];
+                        const middle_mcp = lm[9];
+                        handTilt = (middle_mcp.x - wrist.x) * 5;
+                        targetRotation += handTilt * 0.05;
+
+                        const tips = [8, 12, 16, 20];
+                        let openDist = 0;
+                        tips.forEach(i => openDist += Math.hypot(lm[i].x - wrist.x, lm[i].y - wrist.y));
+                        const avgDist = openDist / 4;
+                        const pinchDist = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y);
+
+                        statusDiv.classList.add('compact');
+
+                        if (avgDist < 0.25) {
+                            state = 'TREE';
+                            statusDiv.innerHTML = '<span class="badge-icon">✊</span><span id="status-text"></span>';
+                            statusDiv.style.borderColor = 'rgba(255, 215, 0, 0.6)';
+                        } else if (pinchDist < 0.05) {
+                            state = 'PHOTO';
+                            statusDiv.innerHTML = '<span class="badge-icon">👌</span><span id="status-text"></span>';
+                            statusDiv.style.borderColor = 'rgba(100, 255, 255, 0.6)';
+                        } else {
+                            state = 'EXPLODE';
+                            statusDiv.innerHTML = '<span class="badge-icon">🖐</span><span id="status-text"></span>';
+                            statusDiv.style.borderColor = 'rgba(255, 107, 107, 0.6)';
+                        }
+                    }
+                });
+
+                const cameraUtils = new Camera(video, {
+                    onFrame: async () => {
+                        frameCnt++;
+                        if (frameCnt % 3 !== 0) return;
+                        await hands.send({ image: video });
+                    },
+                    width: 320,
+                    height: 240
+                });
+                cameraUtils.start();
+            }, 2000);
+        }
+
+        window.addEventListener('resize', () => {
+            if (camera) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+    </script>
+</body>
